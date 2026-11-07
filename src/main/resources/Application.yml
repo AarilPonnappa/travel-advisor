@@ -1,0 +1,8 @@
+scoring:
+  weights:
+    scenic: 0.35
+    character: 0.20
+    social: 0.15
+    food-lodging: 0.15
+    efficiency: 0.10
+    practicality: 0.05
