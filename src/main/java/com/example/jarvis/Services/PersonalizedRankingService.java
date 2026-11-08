@@ -27,23 +27,18 @@ public class PersonalizedRankingService {
             "kids", "Kid-friendly"
     );
 
-    private final ProfileBuilder profileBuilder;
     private final PersonalizationScorer fitScorer;
     private final RouteScoringService scoring;
 
     public PersonalizedRankingService (
-            ProfileBuilder profileBuilder,
             PersonalizationScorer fitScorer,
             RouteScoringService scoring
     ) {
-        this.profileBuilder = profileBuilder;
         this.fitScorer = fitScorer;
         this.scoring = scoring;
     }
 
-    public List<PersonalizedRoute> rank(List<PersonalizedCandidate> candidates, QuestionnaireAnswers answers) {
-        UserProfile user = profileBuilder.build(answers);
-
+    public List<PersonalizedRoute> rank(List<PersonalizedCandidate> candidates, UserProfile user) {
         return candidates.stream()
                 .filter(c -> passedHardFilters(user, c.profile()))
                 .map(c -> score(user, c))

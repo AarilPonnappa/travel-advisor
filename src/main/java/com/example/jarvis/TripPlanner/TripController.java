@@ -15,8 +15,8 @@ public class TripController {
 
         @PostMapping
         public TripPlan plan(@RequestBody TripRequest request) {
-            if (request.answers() == null || request.routes() == null || request.routes().isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "answers and at least one route are required");
+            if (request.routes() == null || request.routes().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "at least one route is required");
             }
             return planner.plan(request);
         }

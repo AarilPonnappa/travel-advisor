@@ -3,12 +3,14 @@ package com.example.jarvis.Component;
 import com.example.jarvis.Discussion.DiscussionLink;
 import com.example.jarvis.Discussion.DiscussionSource;
 import com.example.jarvis.Discussion.RouteQuery;
+import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class SearchLinkDiscussionSource implements DiscussionSource {
     private static final List<String> SUBREDDITS = List.of("roadtrip", "RoadTripPlanning", "travel");
 

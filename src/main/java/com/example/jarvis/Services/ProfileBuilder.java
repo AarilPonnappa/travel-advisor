@@ -1,12 +1,13 @@
 package com.example.jarvis.Services;
 
-import com.example.jarvis.Personalization.QuestionnaireAnswers;
+import com.example.jarvis.Personalization.TravelPreferences;
 import com.example.jarvis.Personalization.UserProfile;
 import com.example.jarvis.Personalization.Vibe;
 import com.example.jarvis.RatingSystem.ScoreWeights;
 
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @Service
@@ -18,7 +19,12 @@ public class ProfileBuilder {
         this.base = base;
     }
 
-    public UserProfile build(QuestionnaireAnswers a) {
+    /**
+     * @param preferences may be partial or null; gaps are filled with neutral defaults
+     * @param departure   may be null, in which case no seasonal filtering is applied
+     */
+    public UserProfile build(TravelPreferences preferences, LocalDate departure) {
+        TravelPreferences a = (preferences != null ? preferences : TravelPreferences.empty()).resolved();
         Map<Vibe, Integer> v = a.vibes();
 
         double scenic = base.scenic() * factor(rating(v, Vibe.SCENIC));
@@ -55,8 +61,8 @@ public class ProfileBuilder {
                 a.budget(),
                 a.travellingWithPets(),
                 a.travellingWithKids(),
-                a.drivingKmPerDay(),
-                a.departure() != null ? a.departure().getMonthValue() : 0);
+                departure != null ? departure.getMonthValue() : 0,
+                a.drivingKmPerDay());
     }
 
     /**
@@ -70,6 +76,6 @@ public class ProfileBuilder {
      * Unanswered vibes count as neutral (3).
      */
     private static int rating(Map<Vibe, Integer> vibes, Vibe vibe) {
-        return vibes.getOrDefault(vibe, 3);
+        return vibes.getOrDefault(vibe, TravelPreferences.DEFAULT_RATING);
     }
 }

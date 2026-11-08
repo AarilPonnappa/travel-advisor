@@ -35,7 +35,7 @@ public class RouteScoringService {
         double total = contributions.values().stream().mapToDouble(Double::doubleValue).sum();
 
         List<String> why = contributions.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByKey().reversed())
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
                 .limit(2)
                 .map(e -> "Strong on " + e.getKey())
                 .toList();

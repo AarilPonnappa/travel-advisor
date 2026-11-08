@@ -7,7 +7,6 @@ import com.example.jarvis.Lodging.RankedLodging;
 import com.example.jarvis.Lodging.StretchPick;
 import com.example.jarvis.Personalization.PersonalizedCandidate;
 import com.example.jarvis.Personalization.PersonalizedRoute;
-import com.example.jarvis.Personalization.QuestionnaireAnswers;
 import com.example.jarvis.Personalization.UserProfile;
 import com.example.jarvis.RatingSystem.RouteCandidate;
 import com.example.jarvis.RatingSystem.SubScores;
@@ -46,8 +45,7 @@ import org.springframework.stereotype.Service;
      }
 
      public TripPlan plan(TripRequest request) {
-         QuestionnaireAnswers answers = request.answers();
-         UserProfile user = profileBuilder.build(answers);
+         UserProfile user = profileBuilder.build(request.preferences(), request.departure());
          LodgingPreferences prefs = toLodgingPreferences(user);
          int radius = request.lodgingRadiusMeters() != null ? request.lodgingRadiusMeters() : 3000;
          int perStretch = request.picksPerStretch() != null ? request.picksPerStretch() : 3;
@@ -63,7 +61,7 @@ import org.springframework.stereotype.Service;
          }
 
          // 2. Rank with the existing personalized pipeline (filters, weights, fit, season penalty)
-         List<PersonalizedRoute> ranked = ranking.rank(candidates, answers);
+         List<PersonalizedRoute> ranked = ranking.rank(candidates, user);
          if (ranked.isEmpty()) return new TripPlan(ranked, null);
 
          // 3. Attach lodging stops and discussion links to the winner
@@ -83,7 +81,7 @@ import org.springframework.stereotype.Service;
                  top.name(), top.total(), top.baseScore(), top.fitScore(), why,
                  lodgingResult.available(), round2(lodgingResult.coverage()),
                  lodgingResult.stretches(),
-                 discussions.findDiscussions(new RouteQuery(top.name(), "", answers.destination())));
+                 discussions.findDiscussions(new RouteQuery(top.name(), orEmpty(request.origin()), orEmpty(request.destination()))));
 
          return new TripPlan(ranked, chosen);
      }
@@ -126,6 +124,10 @@ import org.springframework.stereotype.Service;
          double practical = (1 - COVERAGE_WEIGHT) * seeded.practicality() + COVERAGE_WEIGHT * r.coverage() * 100;
          return new SubScores(seeded.scenic(), seeded.character(), seeded.social(),
                  food, seeded.efficiency(), practical);
+     }
+
+     private static String orEmpty(String s) {
+         return s != null ? s : "";
      }
 
      private static double round2(double v) {

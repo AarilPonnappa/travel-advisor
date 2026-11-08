@@ -1,6 +1,13 @@
 package com.example.jarvis.TripPlanner;
-import com.example.jarvis.Personalization.QuestionnaireAnswers;
+import com.example.jarvis.Personalization.TravelPreferences;
+
+import java.time.LocalDate;
 import java.util.List;
 
-public record TripRequest(QuestionnaireAnswers answers, List<PlannerRouteInput> routes,
-                              Integer lodgingRadiusMeters, Integer picksPerStretch) {}
+/**
+ * Road-trip planning input. Only {@code routes} is required: preferences are optional (no questionnaire),
+ * and departure is only used for seasonal closures/risks.
+ */
+public record TripRequest(String origin, String destination, LocalDate departure,
+                          TravelPreferences preferences, List<PlannerRouteInput> routes,
+                          Integer lodgingRadiusMeters, Integer picksPerStretch) {}
