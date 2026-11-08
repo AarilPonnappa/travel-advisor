@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Saved planners')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<main>
+    <h1>Saved planners</h1>
+    <p class="muted" th:if="${itineraries.isEmpty()}">Nothing saved yet. <a th:href="@{/}">Plan a trip</a>.</p>
+    <table th:unless="${itineraries.isEmpty()}">
+        <tr><th>#</th><th>Trip</th><th>Days</th><th>Activities &amp; food estimate</th><th></th></tr>
+        <tr th:each="i : ${itineraries}">
+            <td th:text="${i.id}">1</td>
+            <td th:text="${i.title}">trip</td>
+            <td th:text="${i.days.size()}">3</td>
+            <td th:text="${#numbers.formatDecimal(i.estimatedActivitySpend, 1, 'COMMA', 2, 'POINT')}">0</td>
+            <td><a th:href="@{/itineraries/{id}(id=${i.id})}">open</a></td>
+        </tr>
+    </table>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Daily planner')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<nav th:replace="~{fragments/common :: steps}"></nav>
+<section th:replace="~{fragments/common :: moneybar}"></section>
+<main>
+    <h1>Plan your days</h1>
+    <div th:replace="~{fragments/common :: flash}"></div>
+    <p class="notice" th:unless="${geminiReady}">Gemini planner key not set - the built-in planner will be used instead.</p>
+    <p th:if="${latest != null}">
+        Last planner: <a th:href="@{/itineraries/{id}(id=${latest.id})}" th:text="${latest.title}">planner</a>
+    </p>
+
+    <dl class="legend">
+        <th:block th:each="t : ${activityTypes}">
+            <dt th:text="${t.label}">Adventure</dt>
+            <dd th:text="${t.description}">desc</dd>
+        </th:block>
+    </dl>
+
+    <form th:action="@{/trips/{id}/planner(id=${trip.id})}" th:object="${form}" method="post" id="planner-form">
+        <th:block th:each="s : ${trip.stops}" th:unless="${s.origin}">
+          <th:block th:with="stopDays=${trip.dayPlans.?[stop.id == __${s.id}__]}">
+            <section class="card" th:unless="${stopDays.isEmpty()}">
+                <h2 th:text="${s.displayName}">City</h2>
+                <div class="row">
+                    <label>Set every day here to
+                        <select class="set-all" th:attr="data-stop=${s.id}">
+                            <option value="">-</option>
+                            <option th:each="t : ${activityTypes}" th:value="${t}" th:text="${t.label}">type</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="best-months" th:if="${bestMonths.get(s.id) != null}">
+                    <div th:each="b : ${bestMonths.get(s.id)}">
+                        Best months for <strong th:text="${b.activityType().label}">type</strong> here:
+                        <span th:text="${#strings.listJoin(b.months(), ', ')}">Jul, Aug</span>
+                        <span class="muted small" th:text="${b.note()}">note</span>
+                    </div>
+                </div>
+                <table class="days">
+                    <tr><th>Day</th><th>Activity type</th><th>Weather</th></tr>
+                    <tr th:each="p : ${trip.dayPlans}" th:if="${p.stop.id == s.id}"
+                        th:with="i=${trip.dayPlans.indexOf(p)}"
+                        th:attr="data-stop=${s.id},data-risk=${p.weatherRisk}">
+                        <td>
+                            <strong th:text="${#temporals.format(p.date, 'EEE dd MMM')}">Mon</strong>
+                            <span class="muted small" th:if="${p.travelDay}">arrival day</span>
+                            <input type="hidden" th:field="*{days[__${i}__].dayPlanId}">
+                        </td>
+                        <td>
+                            <select th:field="*{days[__${i}__].activityType}" class="type-select">
+                                <option th:each="t : ${activityTypes}" th:value="${t}" th:text="${t.label}"
+                                        th:attr="data-outdoor=${t.outdoor}">type</option>
+                            </select>
+                        </td>
+                        <td>
+                            <span th:text="${p.weatherSummary != null} ? ${p.weatherSummary} : 'unknown'">Sunny</span>
+                            <span th:if="${p.tempMinC != null and p.tempMaxC != null}"
+                                  th:text="${#numbers.formatDecimal(p.tempMinC, 1, 0)} + '-' + ${#numbers.formatDecimal(p.tempMaxC, 1, 0)} + '°C'">10-20</span>
+                            <span class="muted small" th:if="${p.weatherSource == 'TYPICAL'}">(typical for the date)</span>
+                            <div class="warning" th:text="${p.weatherWarning}" th:style="${p.weatherWarning == null} ? 'display:none'">warning</div>
+                        </td>
+                    </tr>
+                </table>
+            </section>
+          </th:block>
+        </th:block>
+
+        <section class="card">
+            <h2>What are you into?</h2>
+            <label class="block">Interests (saved with the trip)
+                <textarea th:field="*{interests}" rows="3" placeholder="e.g. photography, street food, live jazz, architecture"></textarea>
+            </label>
+            <label class="block">Cuisines / restaurant types to try
+                <input type="text" th:field="*{cuisines}" placeholder="e.g. sushi, Ethiopian, food trucks">
+            </label>
+        </section>
+
+        <button type="submit" name="action" value="save" class="secondary">Save &amp; check weather</button>
+        <button type="submit" name="action" value="generate" id="generate-btn">Generate my itinerary</button>
+        <p class="muted small" id="generating" style="display:none">Researching your destinations and building the plan, this can take a minute...</p>
+    </form>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+<script>
+    // swap the warning text as the activity type changes
+    function refreshWarning(row) {
+        const risk = row.dataset.risk;
+        const select = row.querySelector('.type-select');
+        const warn = row.querySelector('.warning');
+        if (!risk) { warn.style.display = 'none'; return; }
+        const opt = select.options[select.selectedIndex];
+        if (opt.dataset.outdoor === 'true') {
+            warn.textContent = 'Weather warning: ' + risk + '. ' + opt.text + ' plans could be unsafe - consider a Historical or Relaxing day instead.';
+        } else {
+            warn.textContent = 'Heads up: ' + risk + ' expected.';
+        }
+        warn.style.display = '';
+    }
+
+    document.querySelectorAll('tr[data-stop]').forEach(function (row) {
+        row.querySelector('.type-select').addEventListener('change', function () { refreshWarning(row); });
+    });
+
+    document.querySelectorAll('.set-all').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+            if (!sel.value) return;
+            document.querySelectorAll('tr[data-stop="' + sel.dataset.stop + '"]').forEach(function (row) {
+                row.querySelector('.type-select').value = sel.value;
+                refreshWarning(row);
+            });
+        });
+    });
+
+    document.getElementById('planner-form').addEventListener('submit', function (e) {
+        if (e.submitter && e.submitter.id === 'generate-btn') {
+            document.getElementById('generating').style.display = '';
+            // disable after the browser has captured the submitter's value
+            setTimeout(function () { e.submitter.disabled = true; }, 0);
+        }
+    });
+</script>
+</body>
+</html>

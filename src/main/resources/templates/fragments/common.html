@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' | Jarvis'">Jarvis</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<header th:fragment="header" class="topbar">
+    <a th:href="@{/}" class="brand">Jarvis</a>
+    <span class="tagline">travel advisor</span>
+    <nav>
+        <a th:href="@{/}">New trip</a>
+        <a th:href="@{/itineraries}">Saved planners</a>
+    </nav>
+</header>
+
+<!-- progress through the trip builder -->
+<nav th:fragment="steps" class="steps" th:if="${trip != null and trip.id != null}">
+    <a th:href="@{/}" class="step done">1. Route</a>
+    <a th:href="@{/trips/{id}/dates(id=${trip.id})}" class="step" th:classappend="${step == 'dates'} ? 'current'">2. Dates</a>
+    <a th:href="@{/trips/{id}/transport(id=${trip.id})}" class="step" th:classappend="${step == 'transport'} ? 'current'">3. Transport</a>
+    <a th:href="@{/trips/{id}/stays(id=${trip.id})}" class="step" th:classappend="${step == 'stays'} ? 'current'">4. Stays</a>
+    <a th:href="@{/trips/{id}/planner(id=${trip.id})}" class="step" th:classappend="${step == 'planner'} ? 'current'">5. Daily planner</a>
+    <span class="step" th:classappend="${step == 'itinerary'} ? 'current'">6. Itinerary</span>
+</nav>
+
+<!-- running total shown on every trip page -->
+<section th:fragment="moneybar" class="moneybar" th:if="${money != null}">
+    <div class="money-numbers">
+        <strong>Spent so far:
+            <span th:text="${money.currency()} + ' ' + ${#numbers.formatDecimal(money.total(), 1, 'COMMA', 2, 'POINT')}">USD 0.00</span>
+        </strong>
+        <span class="chip transport">Transport
+            <span th:text="${#numbers.formatDecimal(money.transport(), 1, 'COMMA', 2, 'POINT')}">0</span></span>
+        <span class="chip stays">Stays
+            <span th:text="${#numbers.formatDecimal(money.stays(), 1, 'COMMA', 2, 'POINT')}">0</span></span>
+        <span class="chip activities">Activities &amp; food (est.)
+            <span th:text="${#numbers.formatDecimal(money.activities(), 1, 'COMMA', 2, 'POINT')}">0</span></span>
+        <span th:if="${money.budget() != null}" class="budget" th:classappend="${money.overBudget()} ? 'over'">
+            Budget <span th:text="${#numbers.formatDecimal(money.budget(), 1, 'COMMA', 2, 'POINT')}">0</span>
+            (<span th:text="${money.budgetUsedPct()}">0</span>% used)
+        </span>
+    </div>
+    <div class="bar">
+        <div class="seg transport" th:style="'width:' + ${money.transportPct()} + '%'"></div>
+        <div class="seg stays" th:style="'width:' + ${money.staysPct()} + '%'"></div>
+        <div class="seg activities" th:style="'width:' + ${money.activitiesPct()} + '%'"></div>
+    </div>
+</section>
+
+<!-- data credits the free apis ask for -->
+<footer th:fragment="footer" class="credits">
+    Routing &amp; geocoding by <a href="https://openrouteservice.org" target="_blank" rel="noopener">openrouteservice</a>
+    &middot; Public transport by <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous (data sources)</a>
+    &middot; <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Powered by Geoapify</a>
+    &middot; Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+    &middot; Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>
+    &middot; Guides from <a href="https://en.wikivoyage.org/" target="_blank" rel="noopener">Wikivoyage</a>
+    &middot; Flights &amp; stays from Google via SerpApi / SearchApi
+</footer>
+
+<div th:fragment="flash">
+    <div class="alert error" th:if="${error}" th:text="${error}">error</div>
+    <div class="alert info" th:if="${info}" th:text="${info}">info</div>
+    <div class="alert error" th:if="${errors != null and !errors.isEmpty()}">
+        <ul><li th:each="e : ${errors}" th:text="${e}">problem</li></ul>
+    </div>
+</div>
+
+</body>
+</html>

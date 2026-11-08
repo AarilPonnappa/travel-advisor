@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Transport')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<nav th:replace="~{fragments/common :: steps}"></nav>
+<section th:replace="~{fragments/common :: moneybar}"></section>
+<main>
+    <h1>How do you want to get there?</h1>
+    <div th:replace="~{fragments/common :: flash}"></div>
+
+    <p class="notice" th:if="${!liveFlights or !liveRoutes}">
+        <span th:if="${!liveFlights}">No SerpApi / SearchApi / Duffel key set - flight prices are typical estimates.</span>
+        <span th:if="${!liveRoutes}">No openrouteservice key set - driving times are estimates.</span>
+    </p>
+
+    <form th:action="@{/trips/{id}/transport/travellers(id=${trip.id})}" method="post" class="card row">
+        <label>Adults <input type="number" name="adults" min="1" max="20" th:value="${trip.adults}" required></label>
+        <label>Children <input type="number" name="children" min="0" max="20" th:value="${trip.children}" required></label>
+        <label>Pets <input type="number" name="pets" min="0" max="10" th:value="${trip.pets}" required></label>
+        <label>Travel class
+            <select name="cabinClass">
+                <option th:each="c : ${cabinClasses}" th:value="${c}" th:text="${c.label}"
+                        th:selected="${c == trip.cabinClass}">Economy</option>
+            </select>
+        </label>
+        <button type="submit" class="secondary">Update &amp; re-search</button>
+    </form>
+
+    <form th:action="@{/trips/{id}/transport(id=${trip.id})}" method="post">
+        <section class="card leg" th:each="leg : ${trip.legs}">
+            <h2>
+                <span th:text="${leg.fromStop.name}">A</span> &rarr; <span th:text="${leg.toStop.name}">B</span>
+                <small class="muted" th:text="'on ' + ${leg.travelDate} + ' - ' + ${#numbers.formatDecimal(leg.distanceKm, 1, 'COMMA', 0, 'POINT')} + ' km apart'">date</small>
+            </h2>
+            <p class="muted" th:if="${leg.options.isEmpty()}">No transport found for this leg. Try different dates.</p>
+
+            <p class="highlights" th:unless="${leg.options.isEmpty()}">
+                <span th:each="o : ${leg.options}" th:if="${o.hasTag('FASTEST')}">
+                    <span class="tag fastest">Fastest</span> <span th:text="${o.mode.label} + ' (' + ${o.doorToDoorLabel} + ' door to door)'"></span>
+                </span>
+                <span th:each="o : ${leg.options}" th:if="${o.hasTag('BUDGET')}">
+                    <span class="tag budget">Budget friendly</span> <span th:text="${o.mode.label}"></span>
+                </span>
+                <span th:each="o : ${leg.options}" th:if="${o.hasTag('CHEAPEST')}">
+                    <span class="tag cheapest">Cheapest</span>
+                    <span th:text="${o.mode.label} + ' (' + ${trip.currency} + ' ' + ${#numbers.formatDecimal(o.totalPrice, 1, 'COMMA', 2, 'POINT')} + ')'"></span>
+                </span>
+            </p>
+
+            <table th:unless="${leg.options.isEmpty()}">
+                <tr>
+                    <th></th><th>#</th><th>Mode</th><th>Details</th><th>Time</th><th>Door to door</th>
+                    <th>Total for group</th><th>Class</th><th></th>
+                </tr>
+                <tr th:each="o : ${leg.options}" th:classappend="${o.selected} ? 'chosen'">
+                    <td><input type="radio" th:name="'leg_' + ${leg.id}" th:value="${o.id}"
+                               th:checked="${o.selected or (leg.selectedOption == null and o.ranking == 1)}"></td>
+                    <td th:text="${o.ranking}">1</td>
+                    <td>
+                        <strong th:text="${o.mode.label}">Flight</strong>
+                        <div>
+                            <span class="tag fastest" th:if="${o.hasTag('FASTEST')}">Fastest</span>
+                            <span class="tag budget" th:if="${o.hasTag('BUDGET')}">Budget friendly</span>
+                            <span class="tag cheapest" th:if="${o.hasTag('CHEAPEST')}">Cheapest</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span th:text="${o.provider}">provider</span>
+                        <div class="muted" th:text="${o.summary}">summary</div>
+                        <div class="muted" th:if="${o.departTime != null}" th:text="${o.departTime} + ' - ' + ${o.arriveTime}">times</div>
+                        <div class="note" th:if="${o.notes != null}" th:text="${o.notes}">notes</div>
+                        <div class="muted small" th:if="${o.source == 'ESTIMATE'}">estimate</div>
+                        <div class="muted small" th:if="${o.source == 'LIVE_ROUTE_ESTIMATED_FARE'}">live route, fare estimated</div>
+                        <div class="muted small" th:if="${o.source == 'DUFFEL_TEST'}">Duffel test data</div>
+                    </td>
+                    <td th:text="${o.durationLabel}">5h</td>
+                    <td th:text="${o.doorToDoorLabel}">7h</td>
+                    <td th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(o.totalPrice, 1, 'COMMA', 2, 'POINT')}">$</td>
+                    <td th:text="${o.travelClass != null} ? ${o.travelClass} : '-'">Economy</td>
+                    <td><a th:if="${o.bookingUrl != null}" th:href="${o.bookingUrl}" target="_blank" rel="noopener">check</a></td>
+                </tr>
+            </table>
+        </section>
+
+        <button type="submit">Save choices &amp; find stays</button>
+    </form>
+    <p class="muted small">Train, bus and ferry timetables come from <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous and its data sources</a>.
+        Where no timetable is found, options are marked <em>estimate</em>.</p>
+    <form th:action="@{/trips/{id}/transport/refresh(id=${trip.id})}" method="post" class="inline">
+        <button type="submit" class="link">Search again</button>
+    </form>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

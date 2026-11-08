@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Stays')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<nav th:replace="~{fragments/common :: steps}"></nav>
+<section th:replace="~{fragments/common :: moneybar}"></section>
+<main>
+    <h1>Where will you stay?</h1>
+    <div th:replace="~{fragments/common :: flash}"></div>
+    <p class="notice" th:unless="${liveData}">No SerpApi / SearchApi key set - showing demo listings so you can try the flow.</p>
+    <p class="muted">
+        Searching for <span th:text="${trip.adults}">2</span> adult(s), <span th:text="${trip.children}">0</span> child(ren)
+        <span th:if="${trip.pets > 0}">and <span th:text="${trip.pets}">1</span> pet(s) - only pet-friendly places are shown</span>.
+        You can split a destination across several places, or skip nights (staying with friends etc).
+    </p>
+
+    <details class="card stop" th:each="s : ${trip.stops}" th:unless="${s.origin}"
+             th:open="${s.id == openStopId}" th:id="'stop-' + ${s.id}">
+        <summary>
+            <strong th:text="${s.displayName}">City</strong>
+            <span class="muted" th:text="${s.arriveDate} + ' to ' + ${s.leaveDate} + ' (' + ${s.nights.size()} + ' night(s))'">dates</span>
+            <span class="tag" th:classappend="${s.staySorted} ? 'ok' : 'todo'" th:text="${s.staySorted} ? 'sorted' : 'needs stays'">status</span>
+            <span class="muted" th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(stopTotals.get(s.id), 1, 'COMMA', 2, 'POINT')}">$</span>
+        </summary>
+
+        <p class="muted" th:if="${s.nights.isEmpty()}">Passing through - no nights here.</p>
+
+        <table th:unless="${s.nights.isEmpty()}" class="nights">
+            <tr><th>Night of</th><th>Where</th><th></th></tr>
+            <tr th:each="n : ${s.nights}">
+                <td th:text="${#temporals.format(n, 'EEE dd MMM yyyy')}">night</td>
+                <td>
+                    <span th:if="${s.bookingFor(n) != null}" th:text="${s.bookingFor(n).propertyName}">hotel</span>
+                    <span th:if="${s.isNightSkipped(n)}" class="muted">skipped - own arrangement</span>
+                    <span th:if="${s.bookingFor(n) == null and !s.isNightSkipped(n)}" class="todo-text">not sorted yet</span>
+                </td>
+                <td>
+                    <form th:if="${s.bookingFor(n) == null}" method="post" class="inline"
+                          th:action="@{/trips/{t}/stays/{s}/skip(t=${trip.id},s=${s.id})}">
+                        <input type="hidden" name="night" th:value="${n}">
+                        <input type="hidden" name="skip" th:value="${!s.isNightSkipped(n)}">
+                        <button type="submit" class="link" th:text="${s.isNightSkipped(n)} ? 'un-skip' : 'skip this night'">skip</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+
+        <div th:unless="${s.bookings.isEmpty()}">
+            <h3>Booked here</h3>
+            <ul class="bookings">
+                <li th:each="b : ${s.bookings}">
+                    <strong th:text="${b.propertyName}">Hotel</strong>
+                    <span th:text="${b.checkIn} + ' to ' + ${b.checkOut} + ' (' + ${b.nightCount} + ' night(s))'">dates</span>
+                    - <span th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(b.totalPrice, 1, 'COMMA', 2, 'POINT')}">$</span>
+                    <a th:if="${b.url != null}" th:href="${b.url}" target="_blank" rel="noopener">view</a>
+                    <form method="post" class="inline" th:action="@{/trips/{t}/stays/{s}/bookings/{b}/delete(t=${trip.id},s=${s.id},b=${b.id})}">
+                        <button type="submit" class="link">remove</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        <div th:unless="${s.staySorted}">
+            <h3>Find a place</h3>
+            <form method="get" th:action="@{/trips/{t}/stays(t=${trip.id})}" class="row">
+                <input type="hidden" name="stopId" th:value="${s.id}">
+                <label>Check in <input type="date" name="checkIn" required
+                                       th:value="${searchStopId == s.id} ? ${searchCheckIn} : ${s.firstOpenNight}"
+                                       th:min="${s.arriveDate}" th:max="${s.leaveDate}"></label>
+                <label>Check out <input type="date" name="checkOut" required
+                                        th:value="${searchStopId == s.id} ? ${searchCheckOut} : ${s.firstOpenBlockEnd}"
+                                        th:min="${s.arriveDate}" th:max="${s.leaveDate}"></label>
+                <label>Type
+                    <select name="type">
+                        <option th:each="t : ${stayTypes}" th:value="${t}" th:text="${t.label}"
+                                th:selected="${searchStopId == s.id} ? ${t == searchType} : ${t.name() == 'ANY'}">any</option>
+                    </select>
+                </label>
+                <button type="submit" class="secondary">Search</button>
+            </form>
+            <form method="post" class="inline" th:action="@{/trips/{t}/stays/{s}/skip-rest(t=${trip.id},s=${s.id})}">
+                <button type="submit" class="link">I've got the remaining nights covered (skip them)</button>
+            </form>
+        </div>
+
+        <div th:if="${searchStopId == s.id and offers != null}">
+            <h3 th:text="${offers.size()} + ' places for ' + ${searchCheckIn} + ' to ' + ${searchCheckOut}">results</h3>
+            <p class="muted" th:if="${offers.isEmpty()}">Nothing available for those dates and group. Try other dates or type.</p>
+            <div id="map" class="map" th:unless="${offers.isEmpty()}"></div>
+            <table th:unless="${offers.isEmpty()}" class="offers">
+                <tr><th>#</th><th>Place</th><th>Type</th><th>Rating</th><th>Total</th><th></th></tr>
+                <tr th:each="o, i : ${offers}" th:id="'offer-' + ${i.index}">
+                    <td th:text="${i.index + 1}">1</td>
+                    <td>
+                        <strong th:text="${o.name()}">Hotel</strong>
+                        <span th:if="${o.stars() != null and o.stars() > 0}" class="muted" th:text="${o.stars()} + '★'">3</span>
+                        <div class="muted" th:if="${o.address() != null}" th:text="${o.address()}">address</div>
+                        <div class="muted small" th:if="${o.petFriendly()}">pet friendly</div>
+                    </td>
+                    <td th:text="${o.type().label}">Hotel</td>
+                    <td th:text="${o.rating() != null} ? ${o.rating()} + ' / 5' : '-'">4.5 / 5</td>
+                    <td th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(o.totalPrice(), 1, 'COMMA', 2, 'POINT')}">$</td>
+                    <td>
+                        <form method="post" th:id="'offer-form-' + ${i.index}"
+                              th:action="@{/trips/{t}/stays/{s}/book(t=${trip.id},s=${s.id})}">
+                            <input type="hidden" name="checkIn" th:value="${searchCheckIn}">
+                            <input type="hidden" name="checkOut" th:value="${searchCheckOut}">
+                            <input type="hidden" name="externalId" th:value="${o.externalId()}">
+                            <input type="hidden" name="name" th:value="${o.name()}">
+                            <input type="hidden" name="type" th:value="${o.type()}">
+                            <input type="hidden" name="latitude" th:value="${o.latitude()}">
+                            <input type="hidden" name="longitude" th:value="${o.longitude()}">
+                            <input type="hidden" name="totalPrice" th:value="${o.totalPrice()}">
+                            <input type="hidden" name="rating" th:value="${o.rating()}">
+                            <input type="hidden" name="address" th:value="${o.address()}">
+                            <input type="hidden" name="url" th:value="${o.url()}">
+                            <input type="hidden" name="source" th:value="${o.source()}">
+                            <button type="submit">Select</button>
+                        </form>
+                        <a th:if="${o.url() != null}" th:href="${o.url()}" target="_blank" rel="noopener" class="small">view</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </details>
+
+    <form th:action="@{/trips/{id}/stays/done(id=${trip.id})}" method="post">
+        <button type="submit">Continue to daily planner</button>
+    </form>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+
+<th:block th:if="${markersJson != null}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script th:inline="javascript">
+        // every search result as a pin, clicking "select" submits that row's form
+        const markers = JSON.parse(/*[[${markersJson}]]*/ '[]');
+        const center = JSON.parse(/*[[${centerJson}]]*/ '[0,0]');
+        const currency = /*[[${trip.currency}]]*/ 'USD';
+        if (window.L && document.getElementById('map')) {
+            const map = L.map('map').setView(center, 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            const bounds = [];
+            markers.forEach(function (m) {
+                const popup = document.createElement('div');
+                const title = document.createElement('strong');
+                title.textContent = (m.i + 1) + '. ' + m.name;
+                popup.appendChild(title);
+                popup.appendChild(document.createElement('br'));
+                popup.appendChild(document.createTextNode(m.type + ' - ' + currency + ' ' + Number(m.price).toFixed(2)));
+                popup.appendChild(document.createElement('br'));
+                const btn = document.createElement('button');
+                btn.textContent = 'Select';
+                btn.onclick = function () { document.getElementById('offer-form-' + m.i).submit(); };
+                popup.appendChild(btn);
+                L.marker([m.lat, m.lng]).addTo(map).bindPopup(popup);
+                bounds.push([m.lat, m.lng]);
+            });
+            if (bounds.length > 1) map.fitBounds(bounds, {padding: [30, 30]});
+        }
+    </script>
+</th:block>
+</body>
+</html>
