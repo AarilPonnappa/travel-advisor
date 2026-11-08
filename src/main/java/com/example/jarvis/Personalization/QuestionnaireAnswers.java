@@ -10,6 +10,7 @@ public record QuestionnaireAnswers (
         int tourismPreference,         // 1 = hidden gems ... 5 = famous attractions
         int budget,                    // 1 = shoestring ... 5 = luxury
         boolean travellingWithPets,
-        boolean travellingWithKids){
+        boolean travellingWithKids,
+        int drivingKmPerDay) {
 
 }

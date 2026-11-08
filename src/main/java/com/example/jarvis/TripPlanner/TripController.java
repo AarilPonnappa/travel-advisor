@@ -1,13 +1,11 @@
-package com.example.jarvis.TripPlaner;
+package com.example.jarvis.TripPlanner;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+@RestController
+@RequestMapping("/api/plan")
 public class TripController {
-
-    @RestController
-    @RequestMapping("/api/plan")
-    public class TripController {
 
         private final TripPlanner planner;
 
@@ -22,5 +20,5 @@ public class TripController {
             }
             return planner.plan(request);
         }
-    }
 }
+

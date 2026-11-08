@@ -11,5 +11,6 @@ public record UserProfile (
         int budget,
         boolean travellingWithPets,
         boolean travellingWithKids,
-        int travelMonth
+        int travelMonth,
+        int drivingKmPerDay
 ) {}
