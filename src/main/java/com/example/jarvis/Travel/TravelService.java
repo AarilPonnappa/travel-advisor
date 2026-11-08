@@ -50,7 +50,7 @@ public class TravelService {
     public TravelOptions plan(TravelRequest request) {
         List<String> notes = Collections.synchronizedList(new ArrayList<>());
         if (!gemini.isAvailable()) {
-            notes.add("Gemini is not configured, so preferences use defaults and routes must be supplied");
+            notes.add("Gemini is not configured (GEMINI_PLANNER_API_KEY), so preferences use defaults and routes must be supplied");
         }
 
         TravelPreferences preferences = preferenceInference.infer(request.prompt(), request.preferences());
@@ -86,8 +86,13 @@ public class TravelService {
     }
 
     private List<FlightOption> searchFlights(TravelRequest request, TravelPreferences preferences, List<String> notes) {
-        if (flightProviders.isEmpty()) {
-            notes.add("No airline provider is connected yet, so no flights were searched");
+        List<FlightProvider> ready = flightProviders.stream().filter(FlightProvider::isConfigured).toList();
+        if (ready.isEmpty()) {
+            notes.add("No flight search keys are configured (SERPAPI_API_KEY, SEARCHAPI_API_KEY or DUFFEL_ACCESS_TOKEN), so no flights were searched");
+            return List.of();
+        }
+        if (request.departureDate() == null) {
+            notes.add("Add a departure date to search flights");
             return List.of();
         }
         FlightSearchRequest search = new FlightSearchRequest(request.origin(), request.destination(),
@@ -95,7 +100,7 @@ public class TravelService {
                 preferences.budget(), request.prompt());
 
         List<FlightOption> all = new ArrayList<>();
-        for (FlightProvider provider : flightProviders) {
+        for (FlightProvider provider : ready) {
             try {
                 all.addAll(provider.search(search));
             } catch (RuntimeException e) {
@@ -103,7 +108,7 @@ public class TravelService {
                 notes.add("Flight search via " + provider.name() + " failed: " + e.getMessage());
             }
         }
-        all.sort(Comparator.comparingDouble(FlightOption::totalPrice));
+        all.sort(Comparator.comparing(FlightOption::totalPrice, Comparator.nullsLast(Comparator.naturalOrder())));
         return all;
     }
 }

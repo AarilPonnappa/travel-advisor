@@ -5,11 +5,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/plan")
-public class TripController {
+public class RoadTripController {
 
         private final TripPlanner planner;
 
-        public TripController(TripPlanner planner) {
+        public RoadTripController(TripPlanner planner) {
             this.planner = planner;
         }
 

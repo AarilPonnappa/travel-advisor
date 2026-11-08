@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Error')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<main>
+    <h1 th:text="${status != null} ? 'Error ' + ${status} : 'Something went wrong'">Error</h1>
+    <p th:text="${message != null and !#strings.isEmpty(message)} ? ${message} : 'Something went wrong on our side.'">message</p>
+    <p><a th:href="@{/}">Back to start</a></p>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+</body>
+</html>

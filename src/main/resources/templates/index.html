@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Plan a trip')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<main>
+    <h1>Where are you going?</h1>
+    <div th:replace="~{fragments/common :: flash}"></div>
+
+    <form th:action="@{/trips}" method="post" class="card" id="route-form">
+        <p class="muted">Start with where you leave from and where you're going. Use <em>Add stop</em> to put destinations in between
+            (A &rarr; B &rarr; C).</p>
+        <div id="stops">
+            <div class="stop-row" th:each="p, st : ${places}">
+                <label th:text="${st.first} ? 'From' : (${st.last} ? 'To' : 'Stop')">From</label>
+                <input type="text" name="place" th:value="${p}" required
+                       th:placeholder="${st.first} ? 'e.g. New York' : (${st.last} ? 'e.g. Seattle' : 'e.g. Chicago')">
+                <button type="button" class="link remove" th:unless="${st.first or st.last}" onclick="removeStop(this)">remove</button>
+            </div>
+        </div>
+        <button type="button" class="secondary" onclick="addStop()">+ Add stop in between</button>
+        <button type="submit">Next: pick dates</button>
+    </form>
+
+    <section th:if="${!trips.isEmpty()}">
+        <h2>Recent trips</h2>
+        <table>
+            <tr><th>Route</th><th>Created</th><th></th></tr>
+            <tr th:each="t : ${trips}">
+                <td th:text="${t.routeLabel}">A to B</td>
+                <td th:text="${t.createdLabel}">date</td>
+                <td><a th:href="@{/trips/{id}/dates(id=${t.id})}">open</a></td>
+            </tr>
+        </table>
+    </section>
+
+    <section th:if="${!itineraries.isEmpty()}">
+        <h2>Saved planners</h2>
+        <ul>
+            <li th:each="i : ${itineraries}"><a th:href="@{/itineraries/{id}(id=${i.id})}" th:text="${i.title}">planner</a></li>
+        </ul>
+    </section>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+
+<script>
+    // new stops always go right before the final destination
+    function addStop() {
+        const rows = document.querySelectorAll('#stops .stop-row');
+        const last = rows[rows.length - 1];
+        const row = document.createElement('div');
+        row.className = 'stop-row';
+        row.innerHTML = '<label>Stop</label><input type="text" name="place" required placeholder="e.g. Chicago">'
+            + '<button type="button" class="link remove" onclick="removeStop(this)">remove</button>';
+        last.parentNode.insertBefore(row, last);
+        row.querySelector('input').focus();
+    }
+
+    function removeStop(btn) {
+        btn.closest('.stop-row').remove();
+    }
+</script>
+</body>
+</html>

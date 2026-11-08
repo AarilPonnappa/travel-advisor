@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Dates')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<nav th:replace="~{fragments/common :: steps}"></nav>
+<section th:replace="~{fragments/common :: moneybar}"></section>
+<main>
+    <h1 th:text="${trip.routeLabel}">Route</h1>
+    <div th:replace="~{fragments/common :: flash}"></div>
+
+    <form th:action="@{/trips/{id}/dates(id=${trip.id})}" th:object="${form}" method="post" class="card">
+        <h2>When are you at each place?</h2>
+        <table class="dates">
+            <tr><th>Place</th><th>Arrive</th><th>Leave</th></tr>
+            <tr th:each="s, i : *{stops}">
+                <td>
+                    <input type="hidden" th:field="*{stops[__${i.index}__].stopId}">
+                    <strong th:text="${s.name}">Place</strong>
+                    <span class="muted" th:if="${s.origin}">(start)</span>
+                    <span class="muted" th:if="${s.last}">(final destination)</span>
+                </td>
+                <td>
+                    <span th:if="${s.origin}" class="muted">-</span>
+                    <input th:unless="${s.origin}" type="date" class="arrive" th:attr="data-idx=${i.index}"
+                           th:field="*{stops[__${i.index}__].arriveDate}" required>
+                </td>
+                <td>
+                    <input type="date" class="leave" th:attr="data-idx=${i.index}"
+                           th:field="*{stops[__${i.index}__].leaveDate}" required>
+                    <span class="muted" th:if="${s.last}">trip ends</span>
+                </td>
+            </tr>
+        </table>
+
+        <h2>Who's travelling?</h2>
+        <p class="muted">Used for transport prices and for finding stays that fit everyone.</p>
+        <div class="row">
+            <label>Adults <input type="number" min="1" max="20" th:field="*{adults}" required></label>
+            <label>Children <input type="number" min="0" max="20" th:field="*{children}" required></label>
+            <label>Pets <input type="number" min="0" max="10" th:field="*{pets}" required></label>
+            <label>Budget (optional) <input type="number" min="0" step="1" th:field="*{budget}" placeholder="e.g. 5000"></label>
+        </div>
+
+        <button type="submit">Find transport</button>
+    </form>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+<script>
+    // each leave date becomes the earliest arrival for the next stop
+    document.querySelectorAll('input.leave').forEach(function (leave) {
+        leave.addEventListener('change', function () {
+            const next = document.querySelector('input.arrive[data-idx="' + (parseInt(leave.dataset.idx) + 1) + '"]');
+            if (next) {
+                next.min = leave.value;
+                if (!next.value) next.value = leave.value;
+            }
+        });
+    });
+    document.querySelectorAll('input.arrive').forEach(function (arrive) {
+        arrive.addEventListener('change', function () {
+            const leave = document.querySelector('input.leave[data-idx="' + arrive.dataset.idx + '"]');
+            if (leave) leave.min = arrive.value;
+        });
+    });
+</script>
+</body>
+</html>

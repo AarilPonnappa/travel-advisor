@@ -29,7 +29,7 @@ class RouteSuggestionServiceTest {
     @Test
     void parsesGeminiRoutesAndFallsBackToWaypointGeometry() {
         ObjectMapper mapper = JsonMapper.builder().build();
-        GeminiClient gemini = new GeminiClient(mapper, "test-key", "m", "http://unused") {
+        GeminiClient gemini = new GeminiClient(null, mapper) {
             @Override
             public Optional<JsonNode> generateJson(String prompt) {
                 return Optional.of(mapper.readTree(REPLY));

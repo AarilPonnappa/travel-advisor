@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common :: head('Itinerary')}"></head>
+<body>
+<header th:replace="~{fragments/common :: header}"></header>
+<nav th:replace="~{fragments/common :: steps}"></nav>
+<section th:replace="~{fragments/common :: moneybar}"></section>
+<main>
+    <h1 th:text="${itinerary.title}">Trip</h1>
+    <p class="muted" th:text="${itinerary.summary}">summary</p>
+    <p class="muted small">
+        <a th:href="@{/trips/{id}/planner(id=${trip.id})}">Change day types &amp; regenerate</a>
+    </p>
+
+    <section class="card">
+        <h2>Getting around</h2>
+        <ul>
+            <li th:each="leg : ${trip.legs}">
+                <strong th:text="${leg.travelDate}">date</strong>:
+                <span th:text="${leg.fromStop.name} + ' → ' + ${leg.toStop.name}">A to B</span>
+                <span th:if="${leg.selectedOption != null}"
+                      th:text="' by ' + ${leg.selectedOption.mode.label} + ' (' + ${leg.selectedOption.provider} + ', ' + ${leg.selectedOption.durationLabel} + ') - ' + ${trip.currency} + ' ' + ${#numbers.formatDecimal(leg.selectedOption.totalPrice, 1, 'COMMA', 2, 'POINT')}">mode</span>
+            </li>
+        </ul>
+        <h2>Stays</h2>
+        <ul>
+            <th:block th:each="s : ${trip.stops}">
+                <li th:each="b : ${s.bookings}">
+                    <span th:text="${s.name} + ': ' + ${b.propertyName} + ', ' + ${b.checkIn} + ' to ' + ${b.checkOut}">stay</span>
+                    - <span th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(b.totalPrice, 1, 'COMMA', 2, 'POINT')}">$</span>
+                </li>
+                <li th:each="n : ${s.skippedNights}" th:text="${s.name} + ': night of ' + ${n} + ' - own arrangement'">skipped</li>
+            </th:block>
+        </ul>
+    </section>
+
+    <section class="card day" th:each="d : ${itinerary.days}">
+        <h2>
+            <span th:text="'Day ' + ${d.dayIndex + 1} + ' - ' + ${#temporals.format(d.date, 'EEEE dd MMM yyyy')}">Day 1</span>
+            <small class="muted" th:text="${d.location}">city</small>
+        </h2>
+        <p><strong th:text="${d.theme}">theme</strong></p>
+        <p class="warning" th:if="${d.weatherNote != null and !#strings.isEmpty(d.weatherNote)}" th:text="${d.weatherNote}">weather</p>
+        <p class="muted">
+            Estimated spend: <strong th:text="${trip.currency} + ' ' + ${#numbers.formatDecimal(d.estimatedCost, 1, 'COMMA', 2, 'POINT')}">$</strong>
+            &middot; Time travelling: <span th:text="${d.totalTravelMinutes} + ' min'">60 min</span>
+        </p>
+        <table class="timeline">
+            <tr><th>Time</th><th>What</th><th>Getting there</th><th>Cost</th></tr>
+            <tr th:each="item : ${d.items}" th:class="'cat-' + ${#strings.toLowerCase(item.category)}">
+                <td class="time" th:text="${item.startTime} + ' - ' + ${item.endTime}">09:00 - 10:00</td>
+                <td>
+                    <strong th:text="${item.title}">title</strong>
+                    <span class="muted small" th:text="${item.category}">ACTIVITY</span>
+                    <div class="muted" th:if="${item.place != null and item.place != item.title}" th:text="${item.place}">place</div>
+                    <div th:text="${item.description}">description</div>
+                </td>
+                <td th:text="${item.travelMinutes != null and item.travelMinutes > 0} ? ${item.travelMinutes} + ' min ' + (${item.travelMode} ?: '') : '-'">10 min walk</td>
+                <td th:text="${item.estimatedCost != null and item.estimatedCost.signum() > 0} ? ${#numbers.formatDecimal(item.estimatedCost, 1, 'COMMA', 0, 'POINT')} : '-'">20</td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="card" th:unless="${tips.isEmpty()}">
+        <h2>Tips</h2>
+        <ul><li th:each="t : ${tips}" th:text="${t}">tip</li></ul>
+    </section>
+</main>
+<footer th:replace="~{fragments/common :: footer}"></footer>
+
+<!-- read-only trip assistant, uses the second gemini key -->
+<div id="chat" class="chat closed" th:attr="data-itinerary=${itinerary.id},data-ready=${chatReady}">
+    <button type="button" id="chat-toggle" class="chat-toggle">Ask about your trip</button>
+    <div class="chat-panel">
+        <div class="chat-head">
+            <strong>Jarvis chat</strong>
+            <span class="muted small">answers questions, doesn't change your plan</span>
+            <button type="button" class="link" id="chat-close">close</button>
+        </div>
+        <div class="chat-log" id="chat-log">
+            <div class="msg model">Hi! Ask me anything about this plan - timings, what to pack, alternatives for a rainy day...</div>
+        </div>
+        <form id="chat-form" class="chat-form">
+            <input type="text" id="chat-input" placeholder="Type a question" maxlength="2000" autocomplete="off">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</div>
+<script th:src="@{/js/chat.js}"></script>
+</body>
+</html>

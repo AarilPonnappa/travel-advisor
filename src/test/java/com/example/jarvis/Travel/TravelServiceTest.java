@@ -14,9 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.ActiveProfiles;
+import java.math.BigDecimal;
 
 /** Runs without a Gemini key, so it only exercises the wiring and the flight hand-off. */
-@SpringBootTest(properties = "gemini.api-key=")
+@SpringBootTest
+@ActiveProfiles("test")
 class TravelServiceTest {
 
     @TestConfiguration
@@ -27,8 +30,8 @@ class TravelServiceTest {
                 public String name() { return "fake"; }
                 public List<FlightOption> search(FlightSearchRequest r) {
                     return List.of(
-                            new FlightOption("B", List.of("B2"), null, null, 1, 300, 450, "CAD", "pricier", null),
-                            new FlightOption("A", List.of("A1"), null, null, 0, 180, 300 * r.travellers(), "CAD", "cheap", null));
+                            new FlightOption("B", 300, 1, new BigDecimal("450"), "CAD", null, null, null, "TEST"),
+                            new FlightOption("A", 180, 0, BigDecimal.valueOf(300L * r.travellers()), "CAD", null, null, null, "TEST"));
                 }
             };
         }
